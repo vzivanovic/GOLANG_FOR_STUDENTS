@@ -5,7 +5,7 @@ package location;
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "https://github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto";
+option go_package = "/proto";
 
 message LocationUpdate {
   string username = 1;
