@@ -1,29 +1,26 @@
 package main
 
 import (
-	"context"
+	"flag"
 	"log"
 	"math"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/vzivanovic/GOLANG_FOR_STUDENTS/db"
-	pb "github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto"
 )
+
+var grpcHostname string
 
 type LocationUpdateRequest struct {
 	Username  string  `json:"username" binding:"required,min=4,max=16,alphanum"`
-	Latitude  float64 `json:"latitude" binding:"required"`
-	Longitude float64 `json:"longitude" binding:"required"`
+	Latitude  float64 `json:"latitude" binding:"required,gte=-90,lte=90"`
+	Longitude float64 `json:"longitude" binding:"required,gte=-180,lte=180"`
 }
 
 type SearchRequest struct {
-	Latitude  float64 `form:"latitude" binding:"required"`
-	Longitude float64 `form:"longitude" binding:"required"`
+	Latitude  float64 `form:"latitude" binding:"required,gte=-90,lte=90"`
+	Longitude float64 `form:"longitude" binding:"required,gte=-180,lte=180"`
 	Radius    float64 `form:"radius" binding:"required"`
 	Page      int     `form:"page" binding:"required,default=1"`
 	Size      int     `form:"size" binding:"required,default=10"`
@@ -32,7 +29,7 @@ type SearchRequest struct {
 type DistanceRequest struct {
 	Username  string    `form:"username" binding:"required,min=4,max=16,alphanum"`
 	StartTime time.Time `form:"start_time" binding:"required"`
-	EndTime   time.Time `form:"end_time" binding:"required"`
+	EndTime   time.Time `form:"end_time"`
 }
 
 type UserLocation struct {
@@ -101,83 +98,19 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 }
 
 func main() {
+	flag.StringVar(&grpcHostname, "grpc-hostname", "localhost", "gRPC server hostname")
+	flag.Parse()
+
 	db.InitLocationDB()
 
 	r := gin.Default()
 
 	r.POST("/api/v1/location/update", func(c *gin.Context) {
-		var req LocationUpdateRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Connect to location history microservice
-		conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("Failed to connect to location history microservice: %v", err)
-		}
-		defer conn.Close()
-
-		client := pb.NewLocationServiceClient(conn)
-
-		_, err = client.UpdateLocation(context.Background(), &pb.LocationUpdate{
-			Username:  req.Username,
-			Latitude:  req.Latitude,
-			Longitude: req.Longitude,
-		})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update location"})
-			return
-		}
-
-		// Update database
-		if err := updateLocation(req); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update location in database"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"status": "location updated"})
+		UpdateLocationHandler(c, grpcHostname)
 	})
-
-	r.GET("/api/v1/location/search", func(c *gin.Context) {
-		var req SearchRequest
-		if err := c.ShouldBindQuery(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		res := searchUsers(req)
-		c.JSON(http.StatusOK, res)
-	})
-
+	r.GET("/api/v1/location/search", SearchUsersHandler)
 	r.GET("/api/v1/location/distance", func(c *gin.Context) {
-		var req DistanceRequest
-		if err := c.ShouldBindQuery(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		// Connect to location history microservice
-		conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
-		if err != nil {
-			log.Fatalf("Failed to connect to location history microservice: %v", err)
-		}
-		defer conn.Close()
-
-		client := pb.NewLocationServiceClient(conn)
-
-		res, err := client.GetDistance(context.Background(), &pb.DistanceRequest{
-			Username:  req.Username,
-			StartTime: timestamppb.New(req.StartTime),
-			EndTime:   timestamppb.New(req.EndTime),
-		})
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to calculate distance"})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"distance": res.Distance})
+		GetDistanceHandler(c, grpcHostname)
 	})
 
 	r.Run(":8080")

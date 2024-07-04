@@ -3,7 +3,8 @@ module location-history
 go 1.22.4
 
 require (
-	github.com/mattn/go-sqlite3 v1.14.11
+	github.com/mattn/go-sqlite3 v1.14.11 // indirect
+	github.com/vzivanovic/GOLANG_FOR_STUDENTS/db v0.0.0
 	github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto v0.0.0
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2 // direct
@@ -18,3 +19,5 @@ require (
 )
 
 replace github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto => ../proto
+
+replace github.com/vzivanovic/GOLANG_FOR_STUDENTS/db => ../db
