@@ -50,3 +50,9 @@ func InitLocationHistoryDB() {
 		log.Fatalf("Failed to create table: %v", err)
 	}
 }
+
+func CloseDB() {
+	if err := DB.Close(); err != nil {
+		log.Fatalf("Failed to close database: %v", err)
+	}
+}

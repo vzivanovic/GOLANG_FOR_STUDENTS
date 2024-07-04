@@ -102,6 +102,7 @@ func main() {
 	flag.Parse()
 
 	db.InitLocationDB()
+	defer db.CloseDB()
 
 	r := gin.Default()
 

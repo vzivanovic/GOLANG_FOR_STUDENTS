@@ -72,6 +72,7 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 
 func main() {
 	db.InitLocationHistoryDB()
+	defer db.CloseDB()
 
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
