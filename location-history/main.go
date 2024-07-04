@@ -2,48 +2,24 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"math"
 	"net"
 
-	_ "github.com/mattn/go-sqlite3"
-	pb "github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"github.com/vzivanovic/GOLANG_FOR_STUDENTS/db"
+	pb "github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto"
 )
 
 type server struct {
 	pb.UnimplementedLocationServiceServer
 }
 
-var db *sql.DB
-
-func initDB() {
-	var err error
-	db, err = sql.Open("sqlite3", "./location_history.db")
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	createTableQuery := `
-    CREATE TABLE IF NOT EXISTS location_history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        latitude REAL,
-        longitude REAL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    `
-	_, err = db.Exec(createTableQuery)
-	if err != nil {
-		log.Fatalf("Failed to create table: %v", err)
-	}
-}
-
 func (s *server) UpdateLocation(ctx context.Context, req *pb.LocationUpdate) (*emptypb.Empty, error) {
-	_, err := db.Exec("INSERT INTO location_history (username, latitude, longitude) VALUES (?, ?, ?)",
+	_, err := db.DB.Exec("INSERT INTO location_history (username, latitude, longitude) VALUES (?, ?, ?)",
 		req.Username, req.Latitude, req.Longitude)
 	if err != nil {
 		return nil, err
@@ -53,7 +29,7 @@ func (s *server) UpdateLocation(ctx context.Context, req *pb.LocationUpdate) (*e
 }
 
 func (s *server) GetDistance(ctx context.Context, req *pb.DistanceRequest) (*pb.DistanceResponse, error) {
-	rows, err := db.Query("SELECT latitude, longitude FROM location_history WHERE username = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp",
+	rows, err := db.DB.Query("SELECT latitude, longitude FROM location_history WHERE username = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp",
 		req.Username, req.StartTime.AsTime(), req.EndTime.AsTime())
 	if err != nil {
 		return nil, err
@@ -95,7 +71,7 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 }
 
 func main() {
-	initDB()
+	db.InitLocationHistoryDB()
 
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {

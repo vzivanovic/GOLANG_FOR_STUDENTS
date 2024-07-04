@@ -2,18 +2,17 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"math"
 	"net/http"
 	"time"
 
-	pb "github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto"
-
 	"github.com/gin-gonic/gin"
-	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/vzivanovic/GOLANG_FOR_STUDENTS/db"
+	pb "github.com/vzivanovic/GOLANG_FOR_STUDENTS/proto"
 )
 
 type LocationUpdateRequest struct {
@@ -49,36 +48,14 @@ type SearchResponse struct {
 	TotalUsers int            `json:"total_users"`
 }
 
-var db *sql.DB
-
-func initDB() {
-	var err error
-	db, err = sql.Open("sqlite3", "./locations.db")
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	createTableQuery := `
-    CREATE TABLE IF NOT EXISTS user_locations (
-        username TEXT PRIMARY KEY,
-        latitude REAL,
-        longitude REAL
-    );
-    `
-	_, err = db.Exec(createTableQuery)
-	if err != nil {
-		log.Fatalf("Failed to create table: %v", err)
-	}
-}
-
 func updateLocation(req LocationUpdateRequest) error {
-	_, err := db.Exec("INSERT OR REPLACE INTO user_locations (username, latitude, longitude) VALUES (?, ?, ?)",
+	_, err := db.DB.Exec("INSERT OR REPLACE INTO user_locations (username, latitude, longitude) VALUES (?, ?, ?)",
 		req.Username, req.Latitude, req.Longitude)
 	return err
 }
 
 func searchUsers(req SearchRequest) SearchResponse {
-	rows, err := db.Query("SELECT username, latitude, longitude FROM user_locations")
+	rows, err := db.DB.Query("SELECT username, latitude, longitude FROM user_locations")
 	if err != nil {
 		log.Fatalf("Failed to query database: %v", err)
 	}
@@ -124,7 +101,7 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 }
 
 func main() {
-	initDB()
+	db.InitLocationDB()
 
 	r := gin.Default()
 
