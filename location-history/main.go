@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"math"
 	"net"
@@ -16,6 +17,7 @@ import (
 
 type server struct {
 	pb.UnimplementedLocationServiceServer
+	db *sql.DB
 }
 
 func (s *server) UpdateLocation(ctx context.Context, req *pb.LocationUpdate) (*emptypb.Empty, error) {
