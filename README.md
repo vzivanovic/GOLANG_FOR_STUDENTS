@@ -19,9 +19,9 @@ This project is a Location Management System composed of two microservices: `loc
 ```sh
 git clone https://github.com/yourusername/GOLANG_FOR_STUDENTS.git
 cd GOLANG_FOR_STUDENTS
-
+```
 ### 2. Install the dependencies
-
+```sh
 cd db
 go mod tidy
 cd ..
@@ -35,11 +35,12 @@ go mod tidy
 cd ..
 
 protoc --go_out=. --go-grpc_out=. location.proto
-
+```
 ## Run the program
 
 It requires to run two terminals, one to run location-history and the other to run location-management.
 
+```sh
 cd location-history
 go run main.go
 The service will start on port: '50051'.
@@ -47,7 +48,7 @@ The service will start on port: '50051'.
 cd location-management
 go run main.go
 The service will start on port: '8080'.
-
+```
 ## API Endpoints
 # 1. Update location
     - URL: '/api/v1/location/update'
