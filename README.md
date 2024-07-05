@@ -43,12 +43,14 @@ It requires to run two terminals, one to run location-history and the other to r
 ```sh
 cd location-history
 go run main.go
+```
 The service will start on port: '50051'.
-
+```sh
 cd location-management
 go run main.go
-The service will start on port: '8080'.
 ```
+The service will start on port: '8080'.
+
 ## API Endpoints
 # 1. Update location
     - URL: '/api/v1/location/update'
