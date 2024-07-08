@@ -26,9 +26,14 @@ func setupTestDB() {
     `
 	testDB.Exec(createTableQuery)
 }
-
+func teardownTestDB() {
+	if testDB != nil {
+		testDB.Close()
+	}
+}
 func TestUpdateLocation(t *testing.T) {
 	setupTestDB()
+	defer teardownTestDB()
 	r := gin.Default()
 	r.POST("/api/v1/location/update", func(c *gin.Context) {
 		var req LocationUpdateRequest
@@ -38,19 +43,19 @@ func TestUpdateLocation(t *testing.T) {
 		}
 
 		// Update database
-		if err := updateLocation(req); err != nil {
+		if err := updateLocation(testDB, req); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update location in database"})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{"status": "location updated"})
 	})
-
+	// Test valid username
 	w := httptest.NewRecorder()
 	body, _ := json.Marshal(LocationUpdateRequest{
 		Username:  "testuser",
-		Latitude:  37.7749,
-		Longitude: -122.4194,
+		Latitude:  40.7749,
+		Longitude: -120.4194,
 	})
 	req, _ := http.NewRequest("POST", "/api/v1/location/update", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -58,10 +63,52 @@ func TestUpdateLocation(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), "location updated")
+	// Test invalid username
+	w = httptest.NewRecorder()
+	body, _ = json.Marshal(LocationUpdateRequest{
+		Username:  "test@user",
+		Latitude:  40.7749,
+		Longitude: -120.4194,
+	})
+	req, _ = http.NewRequest("POST", "/api/v1/location/update", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "error")
+
+	// Test invalid latitude
+	w = httptest.NewRecorder()
+	body, _ = json.Marshal(LocationUpdateRequest{
+		Username:  "testuser",
+		Latitude:  100.0, // Invalid latitude
+		Longitude: -120.4194,
+	})
+	req, _ = http.NewRequest("POST", "/api/v1/location/update", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "error")
+
+	// Test invalid longitude
+	w = httptest.NewRecorder()
+	body, _ = json.Marshal(LocationUpdateRequest{
+		Username:  "testuser",
+		Latitude:  40.7749,
+		Longitude: -200.0, // Invalid longitude
+	})
+	req, _ = http.NewRequest("POST", "/api/v1/location/update", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "error")
 }
 
 func TestSearchUsers(t *testing.T) {
 	setupTestDB()
+	defer teardownTestDB()
 	r := gin.Default()
 	r.GET("/api/v1/location/search", func(c *gin.Context) {
 		var req SearchRequest
@@ -70,7 +117,7 @@ func TestSearchUsers(t *testing.T) {
 			return
 		}
 
-		res := searchUsers(req)
+		res := searchUsers(testDB, req)
 		c.JSON(http.StatusOK, res)
 	})
 

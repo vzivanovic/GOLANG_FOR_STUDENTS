@@ -21,7 +21,7 @@ type server struct {
 }
 
 func (s *server) UpdateLocation(ctx context.Context, req *pb.LocationUpdate) (*emptypb.Empty, error) {
-	_, err := db.DB.Exec("INSERT INTO location_history (username, latitude, longitude) VALUES (?, ?, ?)",
+	_, err := s.db.Exec("INSERT INTO location_history (username, latitude, longitude) VALUES (?, ?, ?)",
 		req.Username, req.Latitude, req.Longitude)
 	if err != nil {
 		return nil, err
@@ -31,7 +31,7 @@ func (s *server) UpdateLocation(ctx context.Context, req *pb.LocationUpdate) (*e
 }
 
 func (s *server) GetDistance(ctx context.Context, req *pb.DistanceRequest) (*pb.DistanceResponse, error) {
-	rows, err := db.DB.Query("SELECT latitude, longitude FROM location_history WHERE username = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp",
+	rows, err := s.db.Query("SELECT latitude, longitude FROM location_history WHERE username = ? AND timestamp BETWEEN ? AND ? ORDER BY timestamp",
 		req.Username, req.StartTime.AsTime(), req.EndTime.AsTime())
 	if err != nil {
 		return nil, err
@@ -82,7 +82,7 @@ func main() {
 	}
 
 	s := grpc.NewServer()
-	pb.RegisterLocationServiceServer(s, &server{})
+	pb.RegisterLocationServiceServer(s, &server{db: db.DB})
 	reflection.Register(s)
 
 	log.Println("Starting location history microservice on :50051")
